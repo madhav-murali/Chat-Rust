@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        #messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+        .message {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .system { color: #666; font-style: italic; }
+        .timestamp { color: #999; font-size: 0.8em; }
+        .controls {
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            padding: 8px;
+            margin-right: 10px;
+            width: 200px;
+        }
+        button {
+            padding: 8px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #cccccc;
+        }
+        #status {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .connected { background: #e8f5e9; color: #2e7d32; }
+        .disconnected { background: #ffebee; color: #c62828; }
+    </style>
+</head>
+<body>
+    <div id="status" class="disconnected">Disconnected</div>
+    
+    <div class="controls">
+        <input type="text" id="username" placeholder="Enter username" />
+        <input type="text" id="serverAddress" placeholder="Server address" value="127.0.0.1:8080" />
+        <button onclick="connect()" id="connectBtn">Connect</button>
+    </div>
+
+    <div id="messages"></div>
+
+    <div class="controls">
+        <input type="text" id="message" placeholder="Type your message" disabled />
+        <button onclick="sendMessage()" id="sendBtn" disabled>Send</button>
+    </div>
+
+    <script>
+        let ws;
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('message');
+        const sendBtn = document.getElementById('sendBtn');
+        const usernameInput = document.getElementById('username');
+        const serverInput = document.getElementById('serverAddress');
+        const connectBtn = document.getElementById('connectBtn');
+        const statusDiv = document.getElementById('status');
+
+        function connect() {
+            const username = usernameInput.value.trim();
+            const server = serverInput.value.trim();
+            
+            if (!username || !server) {
+                alert('Please enter both username and server address');
+                return;
+            }
+
+            // Close existing connection if any
+            if (ws) {
+                ws.close();
+            }
+
+            try {
+                ws = new WebSocket(`ws://${server}/chat/${username}`);
+
+                ws.onopen = function() {
+                    messageInput.disabled = false;
+                    sendBtn.disabled = false;
+                    usernameInput.disabled = true;
+                    serverInput.disabled = true;
+                    connectBtn.textContent = 'Disconnect';
+                    statusDiv.textContent = 'Connected';
+                    statusDiv.className = 'connected';
+                    addSystemMessage('Connected to chat server');
+                };
+
+                ws.onmessage = function(event) {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        const time = new Date(msg.timestamp * 1000).toLocaleTimeString();
+                        const messageEl = document.createElement('div');
+                        messageEl.className = `message ${msg.user === 'System' ? 'system' : ''}`;
+                        messageEl.innerHTML = `
+                            <span class="timestamp">[${time}]</span>
+                            <strong>${msg.user}:</strong> ${msg.message}
+                        `;
+                        messagesDiv.appendChild(messageEl);
+                        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                    } catch (e) {
+                        console.error('Error parsing message:', e);
+                    }
+                };
+
+                ws.onclose = function() {
+                    disconnect();
+                };
+
+                ws.onerror = function(error) {
+                    console.error('WebSocket error:', error);
+                    addSystemMessage('Error connecting to server');
+                    disconnect();
+                };
+
+            } catch (error) {
+                console.error('Connection error:', error);
+                addSystemMessage('Error connecting to server');
+                disconnect();
+            }
+        }
+
+        function disconnect() {
+            messageInput.disabled = true;
+            sendBtn.disabled = true;
+            usernameInput.disabled = false;
+            serverInput.disabled = false;
+            connectBtn.textContent = 'Connect';
+            statusDiv.textContent = 'Disconnected';
+            statusDiv.className = 'disconnected';
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(message);
+                messageInput.value = '';
+            }
+        }
+
+        function addSystemMessage(message) {
+            const messageEl = document.createElement('div');
+            messageEl.className = 'message system';
+            messageEl.innerHTML = `
+                <span class="timestamp">[${new Date().toLocaleTimeString()}]</span>
+                <strong>System:</strong> ${message}
+            `;
+            messagesDiv.appendChild(messageEl);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        connectBtn.addEventListener('click', function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                disconnect();
+            } else {
+                connect();
+            }
+        });
+    </script>
+</body>
+</html>
