@@ -1,4 +1,4 @@
-# Chat Service in Rust
+# Chat Service in Rust 😎
 
 This project is a scalable WebSocket-based chat server implemented in Rust using the `warp` web framework and `tokio` for asynchronous runtime. It supports real-time messaging and can handle multiple concurrent users.
 
