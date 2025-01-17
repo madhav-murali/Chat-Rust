@@ -92,18 +92,3 @@ Expected response:
 OK
 ```
 
-## Logging
-
-The server provides useful logs for debugging:
-- New connections and disconnections.
-- Broadcasted messages.
-- Errors during message transmission.
-
-## Contributing
-
-Contributions are welcome! Feel free to open an issue or submit a pull request.
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
-
